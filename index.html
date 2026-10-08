@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>今天吃什麼？ - 擬真 3 軌美食拉霸機</title>
+  <style>
+    :root {
+      --bg-color: #FDF8F2;
+      --card-bg: #FFFFFF;
+      --primary-color: #DDA15E;
+      --primary-hover: #BC6C25;
+      --accent-color: #E63946;
+      --text-main: #4A3E3D;
+      --text-muted: #8D7B7A;
+      --border-color: #E6D7C3;
+      --tag-bg: #FEFAE0;
+      
+      --machine-bg: #7F5539;
+      --machine-border: #9C6644;
+      --gold-accent: #FFD166;
+      --reel-height: 140px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 20px 15px;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    header h1 {
+      font-size: 2.1rem;
+      color: #7F5539;
+      margin-bottom: 6px;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* Card Section */
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--border-color);
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: bold;
+      color: #7F5539;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Filters */
+    .filter-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .filter-item {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .filter-item label {
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: var(--text-muted);
+    }
+
+    select, input {
+      padding: 10px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      background-color: #FFFDF9;
+      font-size: 0.95rem;
+      color: var(--text-main);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--primary-color);
+    }
+
+    /* Slot Machine Unit Design */
+    .slot-machine-wrapper {
+      position: relative;
+      margin: 15px 0 25px;
+      padding-right: 40px;
+    }
+
+    .slot-machine {
+      background: linear-gradient(145deg, #8B5E3C 0%, #5C3D2E 100%);
+      border: 6px solid #4A2810;
+      border-radius: 24px;
+      padding: 25px 20px 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25), inset 0 2px 5px rgba(255,255,255,0.2);
+      text-align: center;
+      position: relative;
+    }
+
+    /* Machine Header Lights */
+    .machine-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #3D2314;
+      padding: 8px 15px;
+      border-radius: 12px;
+      margin-bottom: 15px;
+      border: 2px solid #5C3D2E;
+    }
+
+    .lights-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .light {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #555;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
+    }
+
+    .light.active {
+      animation: blink 0.6s infinite alternate;
+    }
+    .light.red { background: #FF4D4D; }
+    .light.yellow { background: #FFD166; }
+    .light.green { background: #06D6A0; }
+
+    @keyframes blink {
+      from { opacity: 0.4; filter: drop-shadow(0 0 1px currentColor); }
+      to { opacity: 1; filter: drop-shadow(0 0 8px currentColor); }
+    }
+
+    .machine-title {
+      color: var(--gold-accent);
+      font-weight: 900;
+      letter-spacing: 2px;
+      font-size: 1.1rem;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+    }
+
+    /* 3 Reels Container */
+    .reels-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      background: #1A0F0A;
+      padding: 12px;
+      border-radius: 16px;
+      border: 3px solid #3D2314;
+      box-shadow: inset 0 5px 15px rgba(0,0,0,0.8);
+      position: relative;
+    }
+
+    /* Payline Center Indicator */
+    .payline {
+      position: absolute;
+      top: 50%;
+      left: 0; right: 0;
+      height: var(--reel-height);
+      transform: translateY(-50%);
+      border-top: 2px solid rgba(255, 209, 102, 0.6);
+      border-bottom: 2px solid rgba(255, 209, 102, 0.6);
+      background: rgba(255, 209, 102, 0.05);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Single Reel Window */
+    .reel-window {
+      height: var(--reel-height);
+      background: #FFFFFF;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: inset 0 8px 12px rgba(0,0,0,0.3), inset 0 -8px 12px rgba(0,0,0,0.3);
+      border: 1px solid #CCC;
+    }
+
+    .reel-strip {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      display: flex;
+      flex-direction: column;
+      will-change: transform;
+    }
+
+    .reel-item {
+      height: var(--reel-height);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 5px;
+      user-select: none;
+    }
+
+    .reel-emoji {
+      font-size: 3.2rem;
+      line-height: 1;
+      filter: drop-shadow(0 3px 3px rgba(0,0,0,0.15));
+    }
+
+    .reel-text {
+      font-size: 0.95rem;
+      font-weight: bold;
+      color: #7F5539;
+      margin-top: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    /* Pull Lever Arm */
+    .slot-handle {
+      position: absolute;
+      right: 5px;
+      top: 50px;
+      width: 30px;
+      height: 160px;
+      cursor: pointer;
+      z-index: 5;
+    }
+
+    .handle-base {
+      position: absolute;
+      bottom: 20px;
+      left: 0;
+      width: 20px;
+      height: 40px;
+      background: #3D2314;
+      border-radius: 0 8px 8px 0;
+      border: 2px solid #201005;
+    }
+
+    .handle-rod {
+      position: absolute;
+      bottom: 40px;
+      left: 8px;
+      width: 8px;
+      height: 90px;
+      background: linear-gradient(90deg, #CCC 0%, #FFF 50%, #888 100%);
+      border-radius: 4px;
+      transform-origin: bottom center;
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .handle-ball {
+      position: absolute;
+      top: -20px;
+      left: -11px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #FF6B6B, #C53030);
+      box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+    }
+
+    .slot-handle.pulled .handle-rod {
+      transform: rotateX(60deg) scaleY(0.6);
+    }
+
+    /* Primary Button */
+    .btn-primary {
+      display: block;
+      width: 100%;
+      background: linear-gradient(135deg, #DDA15E 0%, #BC6C25 100%);
+      color: white;
+      font-size: 1.25rem;
+      font-weight: bold;
+      padding: 16px;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(188, 108, 37, 0.3);
+      transition: all 0.2s;
+      margin-top: 15px;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:active {
+      transform: translateY(1px);
+    }
+
+    .btn-primary:disabled {
+      background: #888;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* Stats & History */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+      max-height: 180px;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+
+    .stat-item {
+      background: #FFFDF9;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 0.88rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .history-list {
+      list-style: none;
+      max-height: 160px;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+
+    .history-item {
+      padding: 8px 12px;
+      border-bottom: 1px dashed var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+    }
+
+    /* Menu Management */
+    .add-form {
+      display: grid;
+      grid-template-columns: 80px 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    @media (max-width: 500px) {
+      .add-form {
+        grid-template-columns: 1fr;
+      }
+      .slot-machine-wrapper {
+        padding-right: 0;
+      }
+      .slot-handle {
+        display: none;
+      }
+    }
+
+    .menu-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-height: 260px;
+      overflow-y: auto;
+      margin-top: 10px;
+      padding-right: 5px;
+    }
+
+    .menu-chip {
+      background: #FFFDF9;
+      border: 1px solid var(--border-color);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .menu-chip .btn-del {
+      border: none;
+      background: none;
+      color: #999;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: bold;
+    }
+
+    .menu-chip .btn-del:hover {
+      color: var(--accent-color);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .btn-secondary:hover {
+      background: #F0E6D8;
+    }
+
+    /* Modal Popup */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(74, 62, 61, 0.6);
+      backdrop-filter: blur(3px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      z-index: 100;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background: white;
+      border-radius: 24px;
+      padding: 30px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      transform: scale(0.85);
+      transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .modal-overlay.active .modal-card {
+      transform: scale(1);
+    }
+
+    .modal-emoji {
+      font-size: 5.5rem;
+      margin: 10px 0;
+      animation: bounceIn 0.6s ease;
+    }
+
+    @keyframes bounceIn {
+      0% { transform: scale(0.3); opacity: 0; }
+      50% { transform: scale(1.1); }
+      70% { transform: scale(0.9); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .btn-modal-primary {
+      background: #DDA15E;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .btn-modal-sub {
+      background: #FFF8E7;
+      color: #7F5539;
+      border: 1px solid var(--border-color);
+      padding: 10px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .badge {
+      background: var(--tag-bg);
+      color: #7F5539;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      border: 1px solid var(--border-color);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>今天吃什麼？ 🎰</h1>
+      <p>拉動拉桿或點擊按鈕，啟動美食拉霸機！</p>
+    </header>
+
+    <!-- 條件篩選區 -->
+    <div class="card">
+      <div class="card-title">🔍 前置條件篩選</div>
+      <div class="filter-group">
+        <div class="filter-item">
+          <label for="filter-time">用餐時段</label>
+          <select id="filter-time" onchange="resetTempExclude()">
+            <option value="全部">全部時段</option>
+            <option value="早餐">早餐</option>
+            <option value="午餐">午餐</option>
+            <option value="晚餐">晚餐</option>
+            <option value="宵夜">宵夜</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label for="filter-category">料理類別</label>
+          <select id="filter-category" onchange="resetTempExclude()">
+            <option value="全部">全部類別</option>
+            <option value="台式">台式</option>
+            <option value="日式">日式</option>
+            <option value="韓式">韓式</option>
+            <option value="美式">美式</option>
+            <option value="義式">義式</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label for="filter-budget">預算區間</label>
+          <select id="filter-budget" onchange="resetTempExclude()">
+            <option value="全部">不限預算</option>
+            <option value="100元以內">100元以內</option>
+            <option value="100-200元">100-200元</option>
+            <option value="200元以上">200元以上</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 擬真拉霸機主體 -->
+    <div class="slot-machine-wrapper">
+      <div class="slot-machine">
+        <div class="machine-header">
+          <div class="lights-group">
+            <div class="light red active"></div>
+            <div class="light yellow active"></div>
+          </div>
+          <div class="machine-title">FOOD SLOT MACHINE</div>
+          <div class="lights-group">
+            <div class="light green active"></div>
+            <div class="light red active"></div>
+          </div>
+        </div>
+
+        <div class="reels-container">
+          <div class="payline"></div>
+          
+          <div class="reel-window">
+            <div class="reel-strip" id="reel-1"></div>
+          </div>
+          <div class="reel-window">
+            <div class="reel-strip" id="reel-2"></div>
+          </div>
+          <div class="reel-window">
+            <div class="reel-strip" id="reel-3"></div>
+          </div>
+        </div>
+
+        <button class="btn-primary" id="spin-btn" onclick="triggerSpin()">🎰 PULL / 啟動拉霸機！</button>
+      </div>
+
+      <div class="slot-handle" id="slot-handle" onclick="triggerSpin()" title="拉動拉桿！">
+        <div class="handle-base"></div>
+        <div class="handle-rod">
+          <div class="handle-ball"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 歷史與統計區 -->
+    <div class="card">
+      <div class="card-title">📊 被抽中累計次數</div>
+      <div class="stats-grid" id="stats-grid"></div>
+
+      <div class="card-title" style="margin-top: 20px;">📜 最近決策紀錄</div>
+      <ul class="history-list" id="history-list"></ul>
+    </div>
+
+    <!-- 選單管理區 -->
+    <div class="card">
+      <div class="card-title">⚙️ 口袋名單管理 (預設 45 項)</div>
+      
+      <div class="add-form">
+        <select id="add-emoji">
+          <option value="🍱">🍱 便當</option>
+          <option value="🍜">🍜 麵食</option>
+          <option value="🍲">🍲 鍋物</option>
+          <option value="🍛">🍛 咖哩</option>
+          <option value="🍔">🍔 漢堡</option>
+          <option value="🍕">🍕 披薩</option>
+          <option value="🍝">🍝 義大利麵</option>
+          <option value="🍣">🍣 壽司</option>
+          <option value="🥗">🥗 沙拉</option>
+          <option value="🥖">🥖 麵包</option>
+          <option value="🥟">🥟 水餃</option>
+          <option value="🍢">🍢 串燒</option>
+          <option value="🥪">🥪 三明治</option>
+          <option value="🍗">🍗 炸雞</option>
+          <option value="🍚">🍚 米飯</option>
+          <option value="🥩">🥩 牛排</option>
+          <option value="🥣">🥣 湯羹</option>
+          <option value="🍳">🍳 蛋料理</option>
+        </select>
+        <input type="text" id="add-name" placeholder="餐點名稱（例如：滷肉飯）">
+        <select id="add-time">
+          <option value="午餐/晚餐">午餐/晚餐</option>
+          <option value="早餐">早餐</option>
+          <option value="午餐">午餐</option>
+          <option value="晚餐">晚餐</option>
+          <option value="宵夜">宵夜</option>
+        </select>
+      </div>
+
+      <div class="add-form" style="grid-template-columns: 1fr 1fr auto;">
+        <select id="add-category">
+          <option value="台式">台式</option>
+          <option value="日式">日式</option>
+          <option value="韓式">韓式</option>
+          <option value="美式">美式</option>
+          <option value="義式">義式</option>
+          <option value="其他">其他</option>
+        </select>
+        <select id="add-budget">
+          <option value="100元以內">100元以內</option>
+          <option value="100-200元">100-200元</option>
+          <option value="200元以上">200元以上</option>
+        </select>
+        <button class="btn-primary" style="padding: 10px 20px; font-size: 0.95rem; border-radius: 10px; margin-top:0;" onclick="addItem()">新增選項</button>
+      </div>
+
+      <div class="menu-list" id="menu-list"></div>
+      <button class="btn-secondary" onclick="resetDefaultMenu()">重設為預設名單 (45種項目)</button>
+    </div>
+  </div>
+
+  <!-- 結果對話框 (Modal) -->
+  <div class="modal-overlay" id="result-modal">
+    <div class="modal-card">
+      <p style="color: var(--text-muted); font-size: 0.9rem;">🎉 拉霸成功！今天就決定吃...</p>
+      <div class="modal-emoji" id="modal-emoji">🍜</div>
+      <h2 id="modal-title" style="color: #7F5539; font-size: 1.8rem; margin-bottom: 8px;">牛肉麵</h2>
+      <div id="modal-tags" style="display: flex; justify-content: center; gap: 6px; margin-bottom: 15px;"></div>
+      
+      <div class="modal-actions">
+        <button class="btn-modal-primary" onclick="acceptResult()">🎉 就吃這個！</button>
+        <button class="btn-modal-sub" onclick="reroll(false)">🔄 不想吃，再抽一次</button>
+        <button class="btn-modal-sub" style="background: #FFF0F0; color: #C53030;" onclick="reroll(true)">🚫 暫時剔除此項並重抽</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const defaultFoodItems = [
+      { id: '1', emoji: '🍜', name: '紅燒牛肉麵', time: '午餐/晚餐', category: '台式', budget: '100-200元' },
+      { id: '2', emoji: '🍱', name: '台式排骨便當', time: '午餐/晚餐', category: '台式', budget: '100元以內' },
+      { id: '3', emoji: '🍲', name: '個人麻辣小火鍋', time: '晚餐/宵夜', category: '台式', budget: '200元以上' },
+      { id: '4', emoji: '🍝', name: '蕃茄肉醬義大利麵', time: '午餐/晚餐', category: '義式', budget: '100-200元' },
+      { id: '5', emoji: '🍔', name: '美式雙層牛肉堡', time: '午餐/晚餐/宵夜', category: '美式', budget: '100-200元' },
+      { id: '6', emoji: '🍛', name: '日式濃郁咖哩飯', time: '午餐/晚餐', category: '日式', budget: '100-200元' },
+      { id: '7', emoji: '🥗', name: '舒肥雞肉健康餐盒', time: '午餐/晚餐', category: '其他', budget: '100-200元' },
+      { id: '8', emoji: '🍣', name: '綜合握壽司盤', time: '午餐/晚餐', category: '日式', budget: '200元以上' },
+      { id: '9', emoji: '🌮', name: '墨西哥香辣塔可餅', time: '午餐/晚餐', category: '美式', budget: '100-200元' },
+      { id: '10', emoji: '🍕', name: '總匯手工披薩', time: '午餐/晚餐', category: '義式', budget: '200元以上' },
+      { id: '11', emoji: '🥣', name: '鮮肉大餛飩湯', time: '午餐/晚餐/宵夜', category: '台式', budget: '100元以內' },
+      { id: '12', emoji: '🍳', name: '起司豬肉蛋餅', time: '早餐', category: '台式', budget: '100元以內' },
+      { id: '13', emoji: '🥪', name: '美式總匯三明治', time: '早餐', category: '美式', budget: '100元以內' },
+      { id: '14', emoji: '🥟', name: '招牌手工水餃', time: '午餐/晚餐', category: '台式', budget: '100元以內' },
+      { id: '15', emoji: '🍗', name: '韓式甘味炸雞', time: '晚餐/宵夜', category: '韓式', budget: '200元以上' },
+      { id: '16', emoji: '🍲', name: '韓式泡菜豆腐鍋', time: '午餐/晚餐', category: '韓式', budget: '100-200元' },
+      { id: '17', emoji: '🍜', name: '日式濃豚骨拉麵', time: '午餐/晚餐', category: '日式', budget: '100-200元' },
+      { id: '18', emoji: '🥖', name: '港式冰火菠蘿油', time: '早餐/午餐', category: '其他', budget: '100元以內' },
+      { id: '19', emoji: '🍚', name: '火雞肉飯加蛋', time: '午餐/晚餐/宵夜', category: '台式', budget: '100元以內' },
+      { id: '20', emoji: '🍢', name: '日式關東煮組合', time: '午餐/晚餐/宵夜', category: '日式', budget: '100元以內' },
+      { id: '21', emoji: '🥩', name: '夜市鐵板骰子牛', time: '晚餐/宵夜', category: '台式', budget: '200元以上' },
+      { id: '22', emoji: '🥖', name: '越式豬肉法國麵包', time: '午餐/晚餐', category: '其他', budget: '100元以內' },
+      { id: '23', emoji: '🍗', name: '宵夜鹽酥雞拼盤', time: '宵夜', category: '台式', budget: '100-200元' },
+      { id: '24', emoji: '🥣', name: '皮蛋瘦肉粥', time: '早餐/午餐/晚餐/宵夜', category: '台式', budget: '100元以內' },
+      { id: '25', emoji: '🍚', name: '古早味滷肉飯', time: '午餐/晚餐/宵夜', category: '台式', budget: '100元以內' },
+      { id: '26', emoji: '🍜', name: '泰式酸辣海鮮湯麵', time: '午餐/晚餐', category: '其他', budget: '100-200元' },
+      { id: '27', emoji: '🍛', name: '印度香料烤餅與咖哩', time: '午餐/晚餐', category: '其他', budget: '200元以上' },
+      { id: '28', emoji: '🍜', name: '港式鮮蝦雲吞麵', time: '午餐/晚餐', category: '其他', budget: '100-200元' },
+      { id: '29', emoji: '🥩', name: '熟成沙朗牛排', time: '晚餐', category: '美式', budget: '200元以上' },
+      { id: '30', emoji: '🍚', name: '韓式石鍋拌飯', time: '午餐/晚餐', category: '韓式', budget: '100-200元' },
+      { id: '31', emoji: '🥟', name: '港式點心蒸籠組', time: '午餐/晚餐', category: '其他', budget: '200元以上' },
+      { id: '32', emoji: '🍢', name: '居酒屋日式串燒', time: '晚餐/宵夜', category: '日式', budget: '200元以上' },
+      { id: '33', emoji: '🍲', name: '藥燉排骨湯麵', time: '晚餐/宵夜', category: '台式', budget: '100-200元' },
+      { id: '34', emoji: '🍱', name: '日式厚切炸豬排定食', time: '午餐/晚餐', category: '日式', budget: '100-200元' },
+      { id: '35', emoji: '🍲', name: '麻辣鴨血臭豆腐', time: '晚餐/宵夜', category: '台式', budget: '100元以內' },
+      { id: '36', emoji: '🥗', name: '凱薩雞肉沙拉', time: '午餐/晚餐', category: '美式', budget: '100-200元' },
+      { id: '37', emoji: '🍞', name: '肉鬆蛋吐司搭熱豆漿', time: '早餐/宵夜', category: '台式', budget: '100元以內' },
+      { id: '38', emoji: '🥐', name: '法式可頌搭拿鐵', time: '早餐', category: '其他', budget: '100-200元' },
+      { id: '39', emoji: '🍚', name: '生燴海鮮燴飯', time: '午餐/晚餐', category: '台式', budget: '100-200元' },
+      { id: '40', emoji: '🍜', name: '日式醬油炒烏龍麵', time: '午餐/晚餐', category: '日式', budget: '100-200元' },
+      { id: '41', emoji: '🍲', name: '清燉羊肉爐', time: '晚餐/宵夜', category: '台式', budget: '200元以上' },
+      { id: '42', emoji: '🍛', name: '泰式綠咖哩雞飯', time: '午餐/晚餐', category: '其他', budget: '100-200元' },
+      { id: '43', emoji: '🥪', name: '熔岩起司牛肉帕尼尼', time: '早餐/午餐', category: '美式', budget: '100-200元' },
+      { id: '44', emoji: '🍱', name: '香烤鯖魚定食', time: '午餐/晚餐', category: '日式', budget: '100-200元' },
+      { id: '45', emoji: '🍜', name: '什錦炒海鮮麵', time: '午餐/晚餐', category: '台式', budget: '100元以內' }
+    ];
+
+    let foodItems = [];
+    let history = [];
+    let currentSelectedCandidate = null;
+    let tempExcludedIds = [];
+    let isSpinning = false;
+    const REEL_HEIGHT = 140;
+
+    function init() {
+      const savedItems = localStorage.getItem('eat_food_items');
+      foodItems = savedItems ? JSON.parse(savedItems) : [...defaultFoodItems];
+
+      const savedHistory = localStorage.getItem('eat_food_history');
+      history = savedHistory ? JSON.parse(savedHistory) : [];
+
+      renderMenuList();
+      renderStats();
+      renderHistory();
+      setupInitialReels();
+    }
+
+    function resetTempExclude() {
+      tempExcludedIds = [];
+    }
+
+    function getFilteredItems() {
+      const time = document.getElementById('filter-time').value;
+      const category = document.getElementById('filter-category').value;
+      const budget = document.getElementById('filter-budget').value;
+
+      return foodItems.filter(item => {
+        if (tempExcludedIds.includes(item.id)) return false;
+        if (time !== '全部' && !item.time.includes(time)) return false;
+        if (category !== '全部' && item.category !== category) return false;
+        if (budget !== '全部' && item.budget !== budget) return false;
+        return true;
+      });
+    }
+
+    function setupInitialReels() {
+      [1, 2, 3].forEach(reelIdx => {
+        const strip = document.getElementById(`reel-${reelIdx}`);
+        const sample = foodItems[reelIdx % foodItems.length];
+        strip.innerHTML = createReelItemHTML(sample);
+        strip.style.transform = 'translateY(0px)';
+      });
+    }
+
+    function createReelItemHTML(item) {
+      return `
+        <div class="reel-item">
+          <div class="reel-emoji">${item.emoji}</div>
+          <div class="reel-text">${item.name}</div>
+        </div>
+      `;
+    }
+
+    function triggerSpin() {
+      if (isSpinning) return;
+
+      const candidates = getFilteredItems();
+      if (candidates.length === 0) {
+        alert('沒有符合當前條件的餐點！請嘗試放寬篩選條件或新增餐點。');
+        return;
+      }
+
+      isSpinning = true;
+      document.getElementById('spin-btn').disabled = true;
+
+      const handle = document.getElementById('slot-handle');
+      handle.classList.add('pulled');
+      setTimeout(() => handle.classList.remove('pulled'), 400);
+
+      const winner = candidates[Math.floor(Math.random() * candidates.length)];
+      currentSelectedCandidate = winner;
+
+      [1, 2, 3].forEach(reelIdx => {
+        const strip = document.getElementById(`reel-${reelIdx}`);
+        const spinCount = 18 + reelIdx * 6;
+        let stripHTML = '';
+
+        for (let i = 0; i < spinCount; i++) {
+          const randomItem = candidates[Math.floor(Math.random() * candidates.length)];
+          stripHTML += createReelItemHTML(randomItem);
+        }
+        stripHTML += createReelItemHTML(winner);
+        strip.innerHTML = stripHTML;
+
+        strip.style.transition = 'none';
+        strip.style.transform = 'translateY(0px)';
+
+        setTimeout(() => {
+          const targetY = -(spinCount * REEL_HEIGHT);
+          const duration = 1.8 + reelIdx * 0.6;
+          
+          strip.style.transition = `transform ${duration}s cubic-bezier(0.15, 0.85, 0.35, 1.12)`;
+          strip.style.transform = `translateY(${targetY}px)`;
+        }, 50);
+      });
+
+      setTimeout(() => {
+        isSpinning = false;
+        document.getElementById('spin-btn').disabled = false;
+        showModal(winner);
+      }, 3800);
+    }
+
+    function showModal(item) {
+      document.getElementById('modal-emoji').innerText = item.emoji;
+      document.getElementById('modal-title').innerText = item.name;
+      document.getElementById('modal-tags').innerHTML = `
+        <span class="badge">${item.time}</span>
+        <span class="badge">${item.category}</span>
+        <span class="badge">${item.budget}</span>
+      `;
+      document.getElementById('result-modal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('result-modal').classList.remove('active');
+    }
+
+    function acceptResult() {
+      if (!currentSelectedCandidate) return;
+
+      const record = {
+        name: currentSelectedCandidate.name,
+        emoji: currentSelectedCandidate.emoji,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        date: new Date().toLocaleDateString()
+      };
+
+      history.unshift(record);
+      localStorage.setItem('eat_food_history', JSON.stringify(history));
+
+      renderHistory();
+      renderStats();
+      closeModal();
+      resetTempExclude();
+    }
+
+    function reroll(excludeCurrent) {
+      if (excludeCurrent && currentSelectedCandidate) {
+        tempExcludedIds.push(currentSelectedCandidate.id);
+      }
+      closeModal();
+      setTimeout(() => {
+        triggerSpin();
+      }, 200);
+    }
+
+    function renderHistory() {
+      const historyList = document.getElementById('history-list');
+      if (history.length === 0) {
+        historyList.innerHTML = '<li class="history-item" style="color: var(--text-muted);">尚無抽籤紀錄</li>';
+        return;
+      }
+
+      historyList.innerHTML = history.slice(0, 10).map(item => `
+        <li class="history-item">
+          <span>${item.emoji} <strong>${item.name}</strong></span>
+          <span style="color: var(--text-muted); font-size: 0.8rem;">${item.date} ${item.time}</span>
+        </li>
+      `).join('');
+    }
+
+    function renderStats() {
+      const statsGrid = document.getElementById('stats-grid');
+      const counts = {};
+
+      history.forEach(item => {
+        counts[item.name] = (counts[item.name] || 0) + 1;
+      });
+
+      const sortedNames = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+
+      if (sortedNames.length === 0) {
+        statsGrid.innerHTML = '<p style="color: var(--text-muted); font-size: 0.85rem;">尚未有累計紀錄</p>';
+        return;
+      }
+
+      statsGrid.innerHTML = sortedNames.map(name => {
+        const food = foodItems.find(f => f.name === name);
+        const emoji = food ? food.emoji : '🍽️';
+        return `
+          <div class="stat-item">
+            <span>${emoji} ${name}</span>
+            <strong style="color: #7F5539;">${counts[name]} 次</strong>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderMenuList() {
+      const menuList = document.getElementById('menu-list');
+      menuList.innerHTML = foodItems.map(item => `
+        <div class="menu-chip">
+          <span>${item.emoji} ${item.name}</span>
+          <button class="btn-del" onclick="deleteItem('${item.id}')">&times;</button>
+        </div>
+      `).join('');
+    }
+
+    function addItem() {
+      const nameInput = document.getElementById('add-name');
+      const name = nameInput.value.trim();
+
+      if (!name) {
+        alert('請輸入餐點名稱！');
+        return;
+      }
+
+      const newItem = {
+        id: Date.now().toString(),
+        emoji: document.getElementById('add-emoji').value,
+        name: name,
+        time: document.getElementById('add-time').value,
+        category: document.getElementById('add-category').value,
+        budget: document.getElementById('add-budget').value
+      };
+
+      foodItems.push(newItem);
+      localStorage.setItem('eat_food_items', JSON.stringify(foodItems));
+
+      nameInput.value = '';
+      renderMenuList();
+      resetTempExclude();
+    }
+
+    function deleteItem(id) {
+      foodItems = foodItems.filter(item => item.id !== id);
+      localStorage.setItem('eat_food_items', JSON.stringify(foodItems));
+      renderMenuList();
+      resetTempExclude();
+    }
+
+    function resetDefaultMenu() {
+      if (confirm('確定要重設為預設的 45 種美食名單嗎？您自行新增的項目將會重置。')) {
+        foodItems = [...defaultFoodItems];
+        localStorage.setItem('eat_food_items', JSON.stringify(foodItems));
+        renderMenuList();
+        resetTempExclude();
+        setupInitialReels();
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
